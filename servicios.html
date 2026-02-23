@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Servicios | Sem Ingenieros</title>
+  <link rel="stylesheet" href="estilos.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <nav class="nav">
+    <a class="brand" href="index.html"><span class="brand-badge"></span>Sem Ingenieros</a>
+    <button class="hamburger" aria-label="Abrir menú" onclick="toggleMenu()"><span></span><span></span><span></span></button>
+
+    <ul class="menu" id="menu">
+      <li><a href="index.html">Inicio</a></li>
+      <li class="dropdown">
+        <a href="servicios.html" id="serviciosLink">Servicios ▾</a>
+        <ul class="submenu" id="submenuServicios">
+          <li><a href="calibracion.html">Calibración</a></li>
+          <li><a href="mantenimiento.html">Mantenimiento</a></li>
+          <li><a href="consultoria.html">Consultoría</a></li>
+        </ul>
+      </li>
+      <li><a href="clientes.html">Clientes</a></li>
+      <li><a href="contacto.html" class="cta">Contacto</a></li>
+    </ul>
+  </nav>
+
+  <div class="spacer"></div>
+
+  <section class="page-header">
+    <div class="wrap">
+      <div class="breadcrumbs">
+        <a href="index.html">Inicio</a> <span class="crumb-sep">›</span> <span>Servicios</span>
+      </div>
+      <div class="page-title">
+        <div>
+          <h1>Servicios</h1>
+          <p>Explora nuestro portafolio y entra a cada servicio para ver su alcance.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <header class="hero">
+    <div class="wrap">
+      <div class="hero-badge">Portafolio de ingeniería biomédica</div>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="contacto.html">Cotizar</a>
+        <a class="btn btn-ghost" href="https://wa.me/573187950647" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap layout">
+      <section class="card content-card">
+        <h2>Nuestro portafolio</h2>
+        <p>Selecciona un servicio para ver detalles, entregables y proceso.</p>
+
+        <div class="services">
+          <article class="svc">
+            <img src="Imagenes/servicio1.jpg" alt="Calibración">
+            <div class="pad">
+              <h3>Calibración</h3>
+              <p>Verificación y ajuste con enfoque en precisión y control.</p>
+              <a href="calibracion.html">Ver más →</a>
+            </div>
+          </article>
+
+          <article class="svc">
+            <img src="Imagenes/servicio2.jpg" alt="Mantenimiento">
+            <div class="pad">
+              <h3>Mantenimiento</h3>
+              <p>Preventivo y correctivo para disponibilidad operativa.</p>
+              <a href="mantenimiento.html">Ver más →</a>
+            </div>
+          </article>
+
+          <article class="svc">
+            <img src="Imagenes/servicio3.jpg" alt="Consultoría">
+            <div class="pad">
+              <h3>Consultoría</h3>
+              <p>Soporte técnico para decisiones, auditorías y mejora.</p>
+              <a href="consultoria.html">Ver más →</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <aside class="card sidebar">
+        <h3 class="side-title">¿Necesitas ayuda?</h3>
+        <div class="side-item">
+          <b>WhatsApp</b>
+          <span>Respuesta rápida</span>
+          <small>Escríbenos para agendar o cotizar.</small>
+        </div>
+        <div class="side-actions">
+          <a class="btn btn-blue" href="contacto.html">Solicitar servicio</a>
+          <a class="btn" style="background:#25D366;color:#fff;" href="https://wa.me/573187950647" target="_blank" rel="noopener">WhatsApp</a>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer>© 2026 Sem Ingenieros - Ingeniería Biomédica</footer>
+
+  <a class="wa-float" href="https://wa.me/573187950647" target="_blank" rel="noopener">
+    <span class="wa-pill">¿Hablamos por WhatsApp?</span>
+    <span class="wa-btn">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M19.11 17.2c-.26-.13-1.56-.77-1.8-.86-.24-.09-.41-.13-.58.13-.17.26-.66.86-.81 1.03-.15.17-.3.2-.56.07-.26-.13-1.08-.4-2.06-1.27-.76-.68-1.27-1.52-1.42-1.78-.15-.26-.02-.4.11-.53.12-.12.26-.3.39-.45.13-.15.17-.26.26-.43.09-.17.04-.32-.02-.45-.06-.13-.58-1.4-.8-1.92-.21-.5-.43-.43-.58-.44-.15-.01-.32-.01-.49-.01-.17 0-.45.06-.69.32-.24.26-.9.88-.9 2.15 0 1.27.92 2.5 1.05 2.67.13.17 1.8 2.75 4.37 3.85.61.26 1.08.42 1.45.54.61.19 1.17.16 1.61.1.49-.07 1.56-.64 1.78-1.26.22-.62.22-1.15.15-1.26-.06-.11-.24-.17-.5-.3zM16.02 3.2c-6.97 0-12.64 5.66-12.64 12.63 0 2.23.59 4.33 1.62 6.15L3.1 28.8l7.03-1.85c1.74.95 3.74 1.5 5.9 1.5 6.97 0 12.64-5.66 12.64-12.62S22.99 3.2 16.02 3.2zm0 22.97c-1.97 0-3.8-.55-5.37-1.5l-.39-.23-4.17 1.1 1.11-4.06-.25-.42a10.52 10.52 0 0 1-1.57-5.63c0-5.82 4.74-10.56 10.64-10.56S26.66 9.6 26.66 15.43c0 5.82-4.74 10.74-10.64 10.74z"/></svg>
+    </span>
+  </a>
+
+  <script src="app.js"></script>
+</body>
+</html>
