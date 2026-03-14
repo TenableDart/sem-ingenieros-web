@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Certificados Blockchain | Sem Ingenieros</title>
+  <link rel="stylesheet" href="estilos.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Estilos extra solo para esta página ── */
+
+    /* Badge de estado del bloque */
+    .badge-hash {
+      display: inline-block;
+      background: rgba(11,74,162,.08);
+      color: var(--azul);
+      border: 1px solid rgba(11,74,162,.18);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .3px;
+    }
+    .badge-ok {
+      background: rgba(22,163,74,.08);
+      color: #16a34a;
+      border-color: rgba(22,163,74,.22);
+    }
+
+    /* Formulario de subida */
+    .upload-zone {
+      border: 2px dashed var(--borde);
+      border-radius: 16px;
+      padding: 28px 20px;
+      text-align: center;
+      transition: .2s;
+      background: var(--fondo);
+      cursor: pointer;
+      position: relative;
+    }
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: var(--azul);
+      background: rgba(11,74,162,.04);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .upload-icon {
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    .upload-zone p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .upload-zone strong {
+      color: var(--azul);
+    }
+
+    /* Cadena de bloques visual */
+    .chain-container {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .bloque {
+      border: 1px solid var(--borde);
+      border-radius: 16px;
+      padding: 16px;
+      background: #fff;
+      position: relative;
+      transition: box-shadow .2s;
+    }
+    .bloque:hover {
+      box-shadow: 0 8px 24px rgba(11,74,162,.10);
+    }
+    .bloque-genesis {
+      border-color: rgba(247,108,12,.35);
+      background: rgba(247,108,12,.03);
+    }
+
+    /* Flecha conector entre bloques */
+    .chain-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 28px;
+      color: var(--muted);
+      font-size: 20px;
+      position: relative;
+    }
+    .chain-arrow::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0; bottom: 0;
+      width: 2px;
+      background: var(--borde);
+      transform: translateX(-50%);
+    }
+    .chain-arrow span {
+      background: #fff;
+      border: 1px solid var(--borde);
+      border-radius: 50%;
+      width: 24px; height: 24px;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header del bloque */
+    .bloque-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .bloque-num {
+      font-weight: 800;
+      color: var(--azul);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bloque-num .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--azul);
+    }
+    .bloque-genesis .bloque-num .dot { background: var(--naranja); }
+    .bloque-genesis .bloque-num { color: var(--naranja); }
+
+    /* Campos del bloque */
+    .bloque-field {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 4px 12px;
+      font-size: 12px;
+      margin-bottom: 5px;
+      align-items: start;
+    }
+    .bloque-field label {
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      padding-top: 2px;
+    }
+    .bloque-field .val {
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      color: #374151;
+      word-break: break-all;
+      background: var(--fondo);
+      border-radius: 6px;
+      padding: 4px 8px;
+      border: 1px solid var(--borde);
+    }
+    .bloque-field .val-data {
+      font-family: Inter, sans-serif;
+      font-size: 12px;
+      font-style: normal;
+    }
+
+    /* Panel de verificación */
+    .verify-result {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 14px;
+      display: none;
+    }
+    .verify-ok {
+      background: rgba(22,163,74,.07);
+      border: 1px solid rgba(22,163,74,.25);
+      color: #15803d;
+    }
+    .verify-fail {
+      background: rgba(220,38,38,.07);
+      border: 1px solid rgba(220,38,38,.25);
+      color: #b91c1c;
+    }
+    .verify-result p { margin: 0; font-size: 13px; line-height: 1.6; }
+    .verify-result strong { font-size: 14px; display: block; margin-bottom: 4px; }
+
+    /* Estadísticas rápidas */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .stat-card {
+      background: var(--fondo);
+      border: 1px solid var(--borde);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+    }
+    .stat-card .num {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--azul);
+      line-height: 1;
+    }
+    .stat-card .lbl {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    /* Sección vacía */
+    .empty-chain {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+    .empty-chain .big { font-size: 40px; margin-bottom: 10px; }
+    .empty-chain p { margin: 0; font-size: 14px; line-height: 1.6; }
+
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .bloque-field { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ===== NAV (igual que el resto del sitio) ===== -->
+<nav class="nav">
+  <a class="brand" href="index.html">
+    <span class="brand-badge"></span>
+    Sem Ingenieros
+  </a>
+
+  <button class="hamburger" aria-label="Abrir menú" onclick="toggleMenu()">
+    <span></span><span></span><span></span>
+  </button>
+
+  <ul class="menu" id="menu">
+    <li><a href="index.html">Inicio</a></li>
+    <li class="dropdown">
+      <a href="servicios.html" id="serviciosLink">Servicios ▾</a>
+      <ul class="submenu" id="submenuServicios">
+        <li><a href="calibracion.html">Calibración</a></li>
+        <li><a href="mantenimiento.html">Mantenimiento</a></li>
+        <li><a href="consultoria.html">Consultoría</a></li>
+      </ul>
+    </li>
+    <li><a href="clientes.html">Clientes</a></li>
+    <li><a href="certificados.html" style="color:var(--azul);font-weight:800;">Certificados</a></li>
+    <li><a href="contacto.html" class="cta">Contacto</a></li>
+  </ul>
+</nav>
+
+<div class="spacer"></div>
+
+<!-- ===== CABECERA ===== -->
+<section class="page-header">
+  <div class="wrap">
+    <div class="breadcrumbs">
+      <a href="index.html">Inicio</a>
+      <span class="crumb-sep">›</span>
+      <span>Certificados Blockchain</span>
+    </div>
+    <div class="page-title">
+      <div>
+        <h1>Certificados Blockchain</h1>
+        <p>Registra certificados de calibración y mantenimiento de forma inmutable. Nadie puede modificarlos después de subidos.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== HERO ===== -->
+<header class="hero" style="background:
+  linear-gradient(90deg, rgba(11,74,162,.80), rgba(11,74,162,.45)),
+  url('Imagenes/servicio1.jpg') center/cover no-repeat;">
+  <div class="wrap">
+    <div class="hero-badge">🔒 Inmutable • Verificable • Transparente</div>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#registrar">Registrar certificado</a>
+      <a class="btn btn-ghost" href="#verificar">Verificar documento</a>
+    </div>
+  </div>
+</header>
+
+<!-- ===== MAIN ===== -->
+<main>
+  <div class="wrap layout">
+
+    <!-- ===== COLUMNA PRINCIPAL ===== -->
+    <section class="card content-card">
+
+      <!-- Estadísticas -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="num" id="statBloques">1</div>
+          <div class="lbl">Bloques en cadena</div>
+        </div>
+        <div class="stat-card">
+          <div class="num" id="statCerts">0</div>
+          <div class="lbl">Certificados</div>
+        </div>
+        <div class="stat-card">
+          <div class="num" id="statIntegra" style="color:#16a34a;font-size:18px;">✓ OK</div>
+          <div class="lbl">Integridad</div>
+        </div>
+      </div>
+
+      <!-- ── REGISTRAR ── -->
+      <div id="registrar" class="section-block">
+        <h2>Registrar nuevo certificado</h2>
+        <p style="color:var(--muted);font-size:14px;margin-bottom:14px;">
+          Completa los datos del servicio realizado. Se generará un bloque único con hash SHA-256 que no podrá ser modificado.
+        </p>
+
+        <div class="form" id="certForm" style="display:grid;gap:10px;">
+          <div class="form-row">
+            <input class="input" id="f_equipo"      type="text"   placeholder="Nombre del equipo (ej. Electrocardiógrafo)" required>
+            <input class="input" id="f_serial"      type="text"   placeholder="Número de serie" required>
+          </div>
+          <div class="form-row">
+            <input class="input" id="f_tipo"        type="text"   placeholder="Tipo de servicio (Calibración / Mantenimiento)" required>
+            <input class="input" id="f_tecnico"     type="text"   placeholder="Técnico responsable" required>
+          </div>
+          <div class="form-row">
+            <input class="input" id="f_institucion" type="text"   placeholder="Institución o cliente" required>
+            <input class="input" id="f_fecha"       type="date"   required>
+          </div>
+          <textarea class="textarea" id="f_resultado" placeholder="Resultado / observaciones del servicio..." style="min-height:80px;" required></textarea>
+
+          <!-- Zona de archivo (opcional, muestra el hash del nombre) -->
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="f_archivo" accept=".pdf,.png,.jpg,.jpeg" onchange="onFileSelected(this)">
+            <div class="upload-icon">📄</div>
+            <p><strong>Arrastra un PDF o haz clic</strong> para adjuntar el informe</p>
+            <p id="fileName" style="margin-top:8px;font-weight:700;color:var(--azul);"></p>
+          </div>
+
+          <button class="btn btn-blue" type="button" onclick="registrarCertificado()">
+            🔐 Registrar en blockchain
+          </button>
+        </div>
+
+        <div id="successMsg" style="display:none;margin-top:14px;padding:14px;border-radius:14px;
+          background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.25);color:#15803d;">
+          <strong>✅ Certificado registrado correctamente</strong>
+          <p style="margin:4px 0 0;font-size:13px;">El bloque fue añadido a la cadena. El hash es único e inmutable.</p>
+        </div>
+      </div>
+
+      <!-- ── VERIFICAR ── -->
+      <div id="verificar" class="section-block" style="margin-top:24px;">
+        <h2>Verificar integridad de la cadena</h2>
+        <p style="color:var(--muted);font-size:14px;margin-bottom:12px;">
+          Comprueba que ningún bloque ha sido alterado desde su registro.
+        </p>
+        <button class="btn btn-blue" type="button" onclick="verificarCadena()">
+          🔍 Verificar toda la cadena
+        </button>
+        <div id="verifyResult" class="verify-result"></div>
+      </div>
+
+      <!-- ── CADENA VISUAL ── -->
+      <div class="section-block" style="margin-top:24px;">
+        <h2>Cadena de bloques registrada</h2>
+        <p style="color:var(--muted);font-size:14px;margin-bottom:14px;">
+          Cada bloque contiene el hash del anterior — si alguien modifica un bloque,
+          todos los siguientes quedan invalidados automáticamente.
+        </p>
+        <div class="chain-container" id="chainContainer">
+          <!-- Se genera con JS -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="card sidebar">
+      <h3 class="side-title">¿Cómo funciona?</h3>
+
+      <div class="side-item">
+        <b>1. Registras</b>
+        <span>Datos del servicio</span>
+        <small>Equipo, técnico, fecha y resultado quedan guardados.</small>
+      </div>
+
+      <div class="side-item">
+        <b>2. Se genera el hash</b>
+        <span>SHA-256 único</span>
+        <small>Cualquier cambio en los datos produce un hash completamente diferente.</small>
+      </div>
+
+      <div class="side-item">
+        <b>3. Bloque enlazado</b>
+        <span>Cadena inmutable</span>
+        <small>Cada bloque guarda el hash del anterior. Alterar uno invalida toda la cadena.</small>
+      </div>
+
+      <div class="side-item">
+        <b>4. Verificación</b>
+        <span>Integridad garantizada</span>
+        <small>El cliente puede verificar que el certificado no ha sido modificado.</small>
+      </div>
+
+      <div class="side-actions">
+        <a class="btn btn-blue" href="#registrar">Registrar certificado</a>
+        <a class="btn" style="background:#fff;border:1px solid var(--borde);" href="contacto.html">Contactar</a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer>© 2026 Sem Ingenieros - Ingeniería Biomédica</footer>
+
+<!-- WhatsApp flotante -->
+<a class="wa-float" href="https://wa.me/573187950647" target="_blank" rel="noopener" aria-label="Chatear por WhatsApp">
+  <span class="wa-pill">¿Hablamos por WhatsApp?</span>
+  <span class="wa-btn">
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M19.11 17.2c-.26-.13-1.56-.77-1.8-.86-.24-.09-.41-.13-.58.13-.17.26-.66.86-.81 1.03-.15.17-.3.2-.56.07-.26-.13-1.08-.4-2.06-1.27-.76-.68-1.27-1.52-1.42-1.78-.15-.26-.02-.4.11-.53.12-.12.26-.3.39-.45.13-.15.17-.26.26-.43.09-.17.04-.32-.02-.45-.06-.13-.58-1.4-.8-1.92-.21-.5-.43-.43-.58-.44-.15-.01-.32-.01-.49-.01-.17 0-.45.06-.69.32-.24.26-.9.88-.9 2.15 0 1.27.92 2.5 1.05 2.67.13.17 1.8 2.75 4.37 3.85.61.26 1.08.42 1.45.54.61.19 1.17.16 1.61.1.49-.07 1.56-.64 1.78-1.26.22-.62.22-1.15.15-1.26-.06-.11-.24-.17-.5-.3zM16.02 3.2c-6.97 0-12.64 5.66-12.64 12.63 0 2.23.59 4.33 1.62 6.15L3.1 28.8l7.03-1.85c1.74.95 3.74 1.5 5.9 1.5 6.97 0 12.64-5.66 12.64-12.62S22.99 3.2 16.02 3.2zm0 22.97c-1.97 0-3.8-.55-5.37-1.5l-.39-.23-4.17 1.1 1.11-4.06-.25-.42a10.52 10.52 0 0 1-1.57-5.63c0-5.82 4.74-10.56 10.64-10.56S26.66 9.6 26.66 15.43c0 5.82-4.74 10.74-10.64 10.74z"/>
+    </svg>
+  </span>
+</a>
+
+<script src="app.js"></script>
+
+<!-- CryptoJS para SHA-256 (igual que en clase) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+
+<script>
+  /* ============================================================
+     BLOCKCHAIN — misma estructura del profe, adaptada al sitio
+     ============================================================ */
+
+  const SHA256 = (msg) => CryptoJS.SHA256(msg).toString();
+
+  class Block {
+    constructor(index, data, previoHash = '') {
+      this.index      = index;
+      this.date       = new Date().toISOString();
+      this.data       = data;
+      this.previoHash = previoHash;
+      this.hash       = this.createHash();
+    }
+
+    createHash() {
+      const dataStr = typeof this.data === 'string'
+        ? this.data
+        : JSON.stringify(this.data);
+      return SHA256(this.index + this.date + dataStr + this.previoHash);
+    }
+  }
+
+  class BlockChain {
+    constructor(genesis) {
+      this.chain = [this.createFirstBlock(genesis)];
+    }
+
+    createFirstBlock(genesis) {
+      return new Block(0, genesis);
+    }
+
+    getLastBlock() {
+      return this.chain[this.chain.length - 1];
+    }
+
+    addBlock(data) {
+      const prev  = this.getLastBlock();
+      const block = new Block(prev.index + 1, data, prev.hash);
+      this.chain.push(block);
+    }
+
+    /* Recalcula hashes y compara — si alguno no coincide, la cadena fue alterada */
+    isValid() {
+      for (let i = 1; i < this.chain.length; i++) {
+        const curr = this.chain[i];
+        const prev = this.chain[i - 1];
+
+        /* Verificar que el hash almacenado coincide con el recalculado */
+        const dataStr = typeof curr.data === 'string'
+          ? curr.data
+          : JSON.stringify(curr.data);
+        const recalc = SHA256(curr.index + curr.date + dataStr + curr.previoHash);
+
+        if (curr.hash !== recalc)       return false;  // bloque alterado
+        if (curr.previoHash !== prev.hash) return false; // eslabón roto
+      }
+      return true;
+    }
+  }
+
+  /* ── Inicializar la cadena con bloque génesis ── */
+  const semChain = new BlockChain({
+    info: 'Bloque génesis — Sem Ingenieros',
+    descripcion: 'Inicio de la cadena de certificados biomédicos'
+  });
+
+  /* ── Variable para nombre de archivo seleccionado ── */
+  let archivoSeleccionado = null;
+
+  function onFileSelected(input) {
+    if (input.files && input.files[0]) {
+      archivoSeleccionado = input.files[0].name;
+      document.getElementById('fileName').textContent = '📎 ' + archivoSeleccionado;
+    }
+  }
+
+  /* ── Registrar certificado ── */
+  function registrarCertificado() {
+    const equipo      = document.getElementById('f_equipo').value.trim();
+    const serial      = document.getElementById('f_serial').value.trim();
+    const tipo        = document.getElementById('f_tipo').value.trim();
+    const tecnico     = document.getElementById('f_tecnico').value.trim();
+    const institucion = document.getElementById('f_institucion').value.trim();
+    const fecha       = document.getElementById('f_fecha').value;
+    const resultado   = document.getElementById('f_resultado').value.trim();
+
+    if (!equipo || !serial || !tipo || !tecnico || !institucion || !fecha || !resultado) {
+      alert('Por favor completa todos los campos antes de registrar.');
+      return;
+    }
+
+    const datosCertificado = {
+      equipo,
+      serial,
+      tipoServicio: tipo,
+      tecnico,
+      institucion,
+      fecha,
+      resultado,
+      archivo: archivoSeleccionado || 'Sin archivo adjunto'
+    };
+
+    semChain.addBlock(datosCertificado);
+
+    /* Limpiar formulario */
+    ['f_equipo','f_serial','f_tipo','f_tecnico','f_institucion','f_fecha','f_resultado'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('fileName').textContent = '';
+    archivoSeleccionado = null;
+
+    /* Mostrar mensaje de éxito */
+    const msg = document.getElementById('successMsg');
+    msg.style.display = 'block';
+    setTimeout(() => { msg.style.display = 'none'; }, 4000);
+
+    /* Actualizar vista */
+    renderChain();
+    updateStats();
+
+    /* Scroll suave a la cadena */
+    document.getElementById('chainContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* ── Verificar integridad ── */
+  function verificarCadena() {
+    const valido = semChain.isValid();
+    const div    = document.getElementById('verifyResult');
+    div.style.display = 'block';
+
+    if (valido) {
+      div.className = 'verify-result verify-ok';
+      div.innerHTML = `
+        <strong>✅ Cadena íntegra</strong>
+        <p>Todos los bloques (${semChain.chain.length}) fueron verificados. 
+        Ningún hash ha sido alterado. Los certificados son auténticos.</p>`;
+    } else {
+      div.className = 'verify-result verify-fail';
+      div.innerHTML = `
+        <strong>⚠️ Cadena comprometida</strong>
+        <p>Se detectó una inconsistencia en los hashes. Uno o más bloques 
+        podrían haber sido modificados.</p>`;
+    }
+  }
+
+  /* ── Renderizar la cadena de bloques visualmente ── */
+  function renderChain() {
+    const container = document.getElementById('chainContainer');
+    container.innerHTML = '';
+
+    if (semChain.chain.length === 0) {
+      container.innerHTML = `
+        <div class="empty-chain">
+          <div class="big">🔗</div>
+          <p>Aún no hay certificados registrados.<br>
+          Completa el formulario para crear el primer bloque.</p>
+        </div>`;
+      return;
+    }
+
+    semChain.chain.forEach((bloque, i) => {
+      const esGenesis = bloque.index === 0;
+
+      /* Preparar datos a mostrar */
+      let dataHTML = '';
+      if (typeof bloque.data === 'object') {
+        if (bloque.data.equipo) {
+          /* Bloque de certificado */
+          dataHTML = `
+            <span class="val val-data">
+              <b>${bloque.data.equipo}</b> · Serie: ${bloque.data.serial}<br>
+              Servicio: ${bloque.data.tipoServicio} · Técnico: ${bloque.data.tecnico}<br>
+              Institución: ${bloque.data.institucion} · Fecha: ${bloque.data.fecha}<br>
+              Resultado: ${bloque.data.resultado}<br>
+              Archivo: ${bloque.data.archivo}
+            </span>`;
+        } else {
+          dataHTML = `<span class="val val-data">${JSON.stringify(bloque.data)}</span>`;
+        }
+      } else {
+        dataHTML = `<span class="val val-data">${bloque.data}</span>`;
+      }
+
+      /* Crear el HTML del bloque */
+      const bloqueDiv = document.createElement('div');
+      bloqueDiv.className = 'bloque' + (esGenesis ? ' bloque-genesis' : '');
+      bloqueDiv.innerHTML = `
+        <div class="bloque-header">
+          <div class="bloque-num">
+            <span class="dot"></span>
+            ${esGenesis ? 'Bloque Génesis' : 'Bloque #' + bloque.index}
+          </div>
+          <span class="badge-hash ${esGenesis ? '' : 'badge-ok'}">
+            ${esGenesis ? '⚙️ Génesis' : '🔒 Certificado'}
+          </span>
+        </div>
+
+        <div class="bloque-field">
+          <label>Fecha</label>
+          <span class="val val-data">${new Date(bloque.date).toLocaleString('es-CO')}</span>
+        </div>
+
+        <div class="bloque-field">
+          <label>Datos</label>
+          ${dataHTML}
+        </div>
+
+        <div class="bloque-field">
+          <label>Hash anterior</label>
+          <span class="val">${bloque.previoHash || '— (ninguno)'}</span>
+        </div>
+
+        <div class="bloque-field">
+          <label>Hash del bloque</label>
+          <span class="val" style="color:var(--azul);font-weight:700;">${bloque.hash}</span>
+        </div>
+      `;
+
+      container.appendChild(bloqueDiv);
+
+      /* Flecha entre bloques (no después del último) */
+      if (i < semChain.chain.length - 1) {
+        const arrow = document.createElement('div');
+        arrow.className = 'chain-arrow';
+        arrow.innerHTML = '<span>↓</span>';
+        container.appendChild(arrow);
+      }
+    });
+  }
+
+  /* ── Actualizar estadísticas ── */
+  function updateStats() {
+    const certs = semChain.chain.length - 1; // sin contar génesis
+    document.getElementById('statBloques').textContent = semChain.chain.length;
+    document.getElementById('statCerts').textContent   = certs;
+
+    const ok = semChain.isValid();
+    const statEl = document.getElementById('statIntegra');
+    statEl.textContent = ok ? '✓ OK' : '⚠ Error';
+    statEl.style.color = ok ? '#16a34a' : '#b91c1c';
+  }
+
+  /* ── Drag & drop visual en la zona de archivo ── */
+  const zone = document.getElementById('uploadZone');
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop',      e => { e.preventDefault(); zone.classList.remove('drag-over'); });
+
+  /* ── Inicializar ── */
+  renderChain();
+  updateStats();
+</script>
+
+</body>
+</html>
