@@ -204,9 +204,10 @@
           <textarea class="textarea" id="f_resultado" placeholder="Resultado / observaciones del servicio..." style="min-height:80px;" required></textarea>
           <div class="upload-zone" id="uploadZone">
             <input type="file" id="f_archivo" accept=".pdf,.png,.jpg,.jpeg" onchange="onFileSelected(this)">
-            <div class="upload-icon">📄</div>
-            <p><strong>Arrastra un PDF o haz clic</strong> para adjuntar el informe</p>
+            <div class="upload-icon" id="uploadIcon">📄</div>
+            <p><strong>Arrastra un PDF o imagen</strong> para adjuntar el informe</p>
             <p id="fileName" style="margin-top:8px;font-weight:700;color:var(--azul);"></p>
+            <p id="fileSize" style="margin-top:2px;font-size:12px;color:var(--muted);"></p>
           </div>
           <button class="btn btn-blue" type="button" onclick="registrarCertificado()">🔐 Registrar en blockchain</button>
         </div>
@@ -282,7 +283,9 @@ class Block {
     this.hash       = this.createHash();
   }
   createHash() {
-    const d = typeof this.data === 'string' ? this.data : JSON.stringify(this.data);
+    /* El archivo base64 no entra en el hash — solo los datos del certificado */
+    const { archivoBase64, archivoTipo, ...datosHash } = (typeof this.data === 'object' ? this.data : {});
+    const d = typeof this.data === 'string' ? this.data : JSON.stringify(datosHash);
     return SHA256(this.index + this.date + d + this.previoHash);
   }
 }
@@ -300,7 +303,8 @@ class BlockChain {
   isValid() {
     for (let i = 1; i < this.chain.length; i++) {
       const curr = this.chain[i], prev = this.chain[i-1];
-      const d = typeof curr.data === 'string' ? curr.data : JSON.stringify(curr.data);
+      const { archivoBase64, archivoTipo, ...datosHash } = (typeof curr.data === 'object' ? curr.data : {});
+      const d = typeof curr.data === 'string' ? curr.data : JSON.stringify(datosHash);
       if (curr.hash !== SHA256(curr.index + curr.date + d + curr.previoHash)) return false;
       if (curr.previoHash !== prev.hash) return false;
     }
@@ -312,7 +316,6 @@ class BlockChain {
 const KEY = 'semIngenieros_blockchain';
 const semChain = new BlockChain({ info: 'Bloque génesis — Sem Ingenieros', descripcion: 'Inicio de la cadena de certificados biomédicos' });
 
-/* Restaurar cadena guardada */
 try {
   const raw = localStorage.getItem(KEY);
   if (raw) {
@@ -322,7 +325,9 @@ try {
 } catch(e) {}
 
 function guardar() {
-  try { localStorage.setItem(KEY, JSON.stringify(semChain.chain)); } catch(e) {}
+  try { localStorage.setItem(KEY, JSON.stringify(semChain.chain)); } catch(e) {
+    console.warn('localStorage lleno — el archivo PDF es muy grande para guardar localmente.');
+  }
 }
 
 /* ── Tabs ── */
@@ -335,15 +340,37 @@ function showTab(id) {
   if (id === 'tab-cadena')    renderChain();
 }
 
-/* ── Registrar ── */
-let archivoSeleccionado = null;
+/* ── Leer archivo como base64 ── */
+let archivoSeleccionado = null; /* { nombre, tipo, base64 } */
+
 function onFileSelected(input) {
-  if (input.files && input.files[0]) {
-    archivoSeleccionado = input.files[0].name;
-    document.getElementById('fileName').textContent = '📎 ' + archivoSeleccionado;
+  const file = input.files && input.files[0];
+  if (!file) return;
+
+  const maxMB = 4;
+  if (file.size > maxMB * 1024 * 1024) {
+    alert(`El archivo es muy grande (máx. ${maxMB} MB). Usa un PDF más liviano.`);
+    input.value = '';
+    return;
   }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    archivoSeleccionado = {
+      nombre:  file.name,
+      tipo:    file.type,       /* application/pdf | image/jpeg | image/png */
+      base64:  e.target.result  /* data:application/pdf;base64,XXXX... */
+    };
+    document.getElementById('fileName').textContent = '📎 ' + file.name;
+    document.getElementById('fileSize').textContent =
+      '(' + (file.size / 1024).toFixed(1) + ' KB)';
+    document.getElementById('uploadIcon').textContent =
+      file.type === 'application/pdf' ? '📕' : '🖼️';
+  };
+  reader.readAsDataURL(file);
 }
 
+/* ── Registrar certificado ── */
 function registrarCertificado() {
   const g = id => document.getElementById(id).value.trim();
   const equipo = g('f_equipo'), serial = g('f_serial'), tipo = g('f_tipo'),
@@ -354,12 +381,22 @@ function registrarCertificado() {
     alert('Por favor completa todos los campos.'); return;
   }
 
-  semChain.addBlock({ equipo, serial, tipoServicio: tipo, tecnico, institucion, fecha, resultado, archivo: archivoSeleccionado || 'Sin archivo adjunto' });
+  semChain.addBlock({
+    equipo, serial, tipoServicio: tipo, tecnico, institucion, fecha, resultado,
+    archivo:      archivoSeleccionado ? archivoSeleccionado.nombre : 'Sin archivo adjunto',
+    archivoBase64:archivoSeleccionado ? archivoSeleccionado.base64 : null,
+    archivoTipo:  archivoSeleccionado ? archivoSeleccionado.tipo   : null,
+  });
   guardar();
 
-  ['f_equipo','f_serial','f_tipo','f_tecnico','f_institucion','f_fecha','f_resultado'].forEach(id => { document.getElementById(id).value = ''; });
+  ['f_equipo','f_serial','f_tipo','f_tecnico','f_institucion','f_fecha','f_resultado'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
   document.getElementById('fileName').textContent = '';
+  document.getElementById('fileSize').textContent = '';
+  document.getElementById('uploadIcon').textContent = '📄';
   archivoSeleccionado = null;
+  document.getElementById('f_archivo').value = '';
 
   const msg = document.getElementById('successMsg');
   msg.style.display = 'block';
@@ -367,15 +404,29 @@ function registrarCertificado() {
   updateStats();
 }
 
-/* ── Consultar ── */
+/* ── Abrir archivo en nueva pestaña ── */
+function verArchivo(base64, tipo, nombre) {
+  if (!base64) return;
+  /* Convertir data URL a Blob para abrir limpio en nueva pestaña */
+  const byteStr   = atob(base64.split(',')[1]);
+  const arr       = new Uint8Array(byteStr.length);
+  for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
+  const blob      = new Blob([arr], { type: tipo });
+  const url       = URL.createObjectURL(blob);
+  const ventana   = window.open(url, '_blank');
+  if (!ventana) alert('Permite ventanas emergentes para ver el archivo.');
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/* ── Render tarjetas de certificados ── */
 function renderCerts() {
-  const grid = document.getElementById('certGrid');
-  const buscar = document.getElementById('buscarTexto').value.toLowerCase();
+  const grid     = document.getElementById('certGrid');
+  const buscar   = document.getElementById('buscarTexto').value.toLowerCase();
   const tipoFilt = document.getElementById('filtroTipo').value.toLowerCase();
 
-  const certs = semChain.chain.filter(b => b.data && typeof b.data === 'object' && b.data.equipo);
+  const certs    = semChain.chain.filter(b => b.data && typeof b.data === 'object' && b.data.equipo);
   const filtrados = certs.filter(b => {
-    const d = b.data;
+    const d  = b.data;
     const ok = !buscar || [d.equipo,d.serial,d.tecnico,d.institucion,d.resultado].join(' ').toLowerCase().includes(buscar);
     const tp = !tipoFilt || d.tipoServicio.toLowerCase().includes(tipoFilt);
     return ok && tp;
@@ -391,9 +442,32 @@ function renderCerts() {
   }
 
   grid.innerHTML = filtrados.map(b => {
-    const d = b.data;
-    const num = `SEM-CERT-${String(b.index).padStart(4,'0')}`;
+    const d        = b.data;
+    const num      = `SEM-CERT-${String(b.index).padStart(4,'0')}`;
     const fechaLeg = new Date(b.date).toLocaleDateString('es-CO', {day:'2-digit',month:'short',year:'numeric'});
+    const tieneArchivo = !!d.archivoBase64;
+    const esPDF        = d.archivoTipo === 'application/pdf';
+    const esImagen     = d.archivoTipo && d.archivoTipo.startsWith('image/');
+
+    /* Vista previa: imagen inline o botón para PDF */
+    let previstaHTML = '';
+    if (tieneArchivo && esImagen) {
+      previstaHTML = `
+        <div style="margin-top:12px;border:1px solid var(--borde);border-radius:12px;overflow:hidden;">
+          <img src="${d.archivoBase64}" alt="Certificado" style="width:100%;display:block;max-height:320px;object-fit:contain;background:#f9f9f9;">
+        </div>`;
+    } else if (tieneArchivo && esPDF) {
+      previstaHTML = `
+        <div style="margin-top:12px;background:rgba(11,74,162,.04);border:1px solid rgba(11,74,162,.15);
+          border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;">
+          <span style="font-size:36px;">📕</span>
+          <div>
+            <div style="font-weight:700;font-size:14px;color:var(--azul);">${d.archivo}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">Documento PDF adjunto</div>
+          </div>
+        </div>`;
+    }
+
     return `
     <div class="cert-card">
       <div class="cert-card-header">
@@ -406,6 +480,7 @@ function renderCerts() {
           <span class="badge badge-verde">✓ Registrado</span>
         </div>
       </div>
+
       <div class="cert-card-body">
         <div class="cert-fields">
           <div class="cert-field"><label>Tipo de servicio</label><span>${d.tipoServicio}</span></div>
@@ -415,10 +490,14 @@ function renderCerts() {
           <div class="cert-field"><label>Resultado</label><span>${d.resultado}</span></div>
           <div class="cert-field"><label>Archivo</label><span>${d.archivo}</span></div>
         </div>
-        <div class="cert-hash">
+
+        ${previstaHTML}
+
+        <div class="cert-hash" style="margin-top:12px;">
           <strong>Hash SHA-256 (blockchain)</strong>${b.hash}
         </div>
       </div>
+
       <div class="cert-detail" id="detail-${b.index}">
         <div class="detail-grid">
           <div class="detail-row"><label>Bloque #</label><span>${b.index}</span></div>
@@ -433,10 +512,18 @@ function renderCerts() {
           </div>
         </div>
       </div>
+
       <div class="cert-card-footer">
         <span class="cert-fecha">Registrado: ${fechaLeg}</span>
-        <button class="btn" style="padding:7px 14px;font-size:13px;background:#fff;border:1px solid var(--borde);"
-          onclick="toggleDetalle(${b.index}, this)">Ver detalles blockchain ▾</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${tieneArchivo ? `
+          <button class="btn btn-blue" style="padding:7px 14px;font-size:13px;"
+            onclick='verArchivo(${JSON.stringify(d.archivoBase64)}, ${JSON.stringify(d.archivoTipo)}, ${JSON.stringify(d.archivo)})'>
+            ${esPDF ? '📕 Ver PDF' : '🖼️ Ver imagen'}
+          </button>` : ''}
+          <button class="btn" style="padding:7px 14px;font-size:13px;background:#fff;border:1px solid var(--borde);"
+            onclick="toggleDetalle(${b.index}, this)">Ver detalles blockchain ▾</button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -513,4 +600,3 @@ updateStats();
 </script>
 </body>
 </html>
-
