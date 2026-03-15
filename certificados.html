@@ -269,84 +269,154 @@
 </a>
 
 <script src="app.js"></script>
+<!-- Librería CryptoJS para calcular el hash SHA-256 de cada bloque -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 <script>
-/* ── Blockchain (misma estructura del profe) ── */
+
+// ─────────────────────────────────────────────
+// FUNCIÓN SHA-256
+// Recibe un texto y devuelve su huella única.
+// Si el texto cambia aunque sea un carácter,
+// el hash resultante es completamente diferente.
+// ─────────────────────────────────────────────
 const SHA256 = msg => CryptoJS.SHA256(msg).toString();
 
+
+// ─────────────────────────────────────────────
+// CLASE BLOCK — representa un bloque individual
+// Cada certificado registrado se convierte en un bloque.
+// ─────────────────────────────────────────────
 class Block {
   constructor(index, data, previoHash = '') {
-    this.index      = index;
-    this.date       = new Date().toISOString();
-    this.data       = data;
-    this.previoHash = previoHash;
-    this.hash       = this.createHash();
+    this.index      = index;       // número del bloque en la cadena (0, 1, 2...)
+    this.date       = new Date().toISOString(); // fecha y hora exacta del registro
+    this.data       = data;        // contenido: datos del certificado
+    this.previoHash = previoHash;  // hash del bloque anterior (lo que "encadena" los bloques)
+    this.hash       = this.createHash(); // huella única de este bloque
   }
+
+  // Calcula el hash usando: número + fecha + datos + hash anterior
+  // El archivo PDF no entra en el hash para no hacerlo demasiado pesado
   createHash() {
-    /* El archivo base64 no entra en el hash — solo los datos del certificado */
     const { archivoBase64, archivoTipo, ...datosHash } = (typeof this.data === 'object' ? this.data : {});
     const d = typeof this.data === 'string' ? this.data : JSON.stringify(datosHash);
     return SHA256(this.index + this.date + d + this.previoHash);
   }
 }
 
+
+// ─────────────────────────────────────────────
+// CLASE BLOCKCHAIN — administra la cadena completa
+// Es un arreglo de bloques donde cada uno
+// apunta al hash del bloque anterior.
+// ─────────────────────────────────────────────
 class BlockChain {
-  constructor(genesis) { this.chain = [this.createFirstBlock(genesis)]; }
-  createFirstBlock(g)  { return new Block(0, g); }
-  getLastBlock()       { return this.chain[this.chain.length - 1]; }
+  constructor(genesis) {
+    // Al crear la cadena, se agrega automáticamente el bloque génesis (bloque 0)
+    this.chain = [this.createFirstBlock(genesis)];
+  }
+
+  // Crea el primer bloque (génesis) — no tiene bloque anterior, previoHash queda vacío
+  createFirstBlock(g) { return new Block(0, g); }
+
+  // Retorna el último bloque de la cadena
+  getLastBlock() { return this.chain[this.chain.length - 1]; }
+
+  // Agrega un nuevo bloque al final de la cadena
+  // El nuevo bloque recibe el hash del bloque anterior para quedar enlazado
   addBlock(data) {
     const prev  = this.getLastBlock();
     const block = new Block(prev.index + 1, data, prev.hash);
     this.chain.push(block);
     return block;
   }
+
+  // Verifica que ningún bloque haya sido modificado
+  // Recalcula el hash de cada bloque y lo compara con el hash guardado
+  // Si alguno no coincide, la cadena fue alterada
   isValid() {
     for (let i = 1; i < this.chain.length; i++) {
-      const curr = this.chain[i], prev = this.chain[i-1];
+      const curr = this.chain[i];
+      const prev = this.chain[i - 1];
       const { archivoBase64, archivoTipo, ...datosHash } = (typeof curr.data === 'object' ? curr.data : {});
       const d = typeof curr.data === 'string' ? curr.data : JSON.stringify(datosHash);
+
+      // Si el hash guardado no coincide con el recalculado → bloque modificado
       if (curr.hash !== SHA256(curr.index + curr.date + d + curr.previoHash)) return false;
+
+      // Si el hash previo no coincide con el hash real del bloque anterior → eslabón roto
       if (curr.previoHash !== prev.hash) return false;
     }
-    return true;
+    return true; // todos los bloques están intactos
   }
 }
 
-/* ── Persistencia con localStorage ── */
-const KEY = 'semIngenieros_blockchain';
-const semChain = new BlockChain({ info: 'Bloque génesis — Sem Ingenieros', descripcion: 'Inicio de la cadena de certificados biomédicos' });
 
+// ─────────────────────────────────────────────
+// PERSISTENCIA — guardar y cargar con localStorage
+// localStorage guarda datos en el navegador del usuario.
+// Los certificados persisten aunque se cierre la página.
+// ─────────────────────────────────────────────
+const KEY = 'semIngenieros_blockchain'; // nombre de la clave en localStorage
+
+// Crear la cadena con su bloque génesis
+const semChain = new BlockChain({
+  info: 'Bloque génesis — Sem Ingenieros',
+  descripcion: 'Inicio de la cadena de certificados biomédicos'
+});
+
+// Al cargar la página, intentar restaurar la cadena guardada anteriormente
 try {
   const raw = localStorage.getItem(KEY);
   if (raw) {
     const guardado = JSON.parse(raw);
+    // Solo restaurar si hay más de 1 bloque (el génesis ya se creó arriba)
     if (guardado && guardado.length > 1) semChain.chain = guardado;
   }
 } catch(e) {}
 
+// Guarda el estado actual de la cadena en localStorage
 function guardar() {
-  try { localStorage.setItem(KEY, JSON.stringify(semChain.chain)); } catch(e) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(semChain.chain));
+  } catch(e) {
+    // Puede fallar si el PDF es muy grande y llena el espacio disponible (~5MB)
     console.warn('localStorage lleno — el archivo PDF es muy grande para guardar localmente.');
   }
 }
 
-/* ── Tabs ── */
+
+// ─────────────────────────────────────────────
+// TABS — cambiar entre las pestañas de la página
+// (Registrar / Consultar / Ver cadena)
+// ─────────────────────────────────────────────
 function showTab(id) {
+  // Quitar la clase "active" de todas las pestañas y paneles
   document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+  // Activar la pestaña y el panel seleccionados
   document.getElementById(id).classList.add('active');
-  document.getElementById('panel-' + id.replace('tab-','')).classList.add('active');
+  document.getElementById('panel-' + id.replace('tab-', '')).classList.add('active');
+
+  // Renderizar el contenido según la pestaña activa
   if (id === 'tab-consultar') renderCerts();
   if (id === 'tab-cadena')    renderChain();
 }
 
-/* ── Leer archivo como base64 ── */
-let archivoSeleccionado = null; /* { nombre, tipo, base64 } */
+
+// ─────────────────────────────────────────────
+// MANEJO DE ARCHIVO — leer el PDF o imagen seleccionado
+// El archivo se convierte a base64 (texto) para
+// poder guardarlo en localStorage junto al bloque.
+// ─────────────────────────────────────────────
+let archivoSeleccionado = null; // guarda { nombre, tipo, base64 } del archivo actual
 
 function onFileSelected(input) {
   const file = input.files && input.files[0];
   if (!file) return;
 
+  // Limitar el tamaño a 4 MB para no desbordar localStorage
   const maxMB = 4;
   if (file.size > maxMB * 1024 * 1024) {
     alert(`El archivo es muy grande (máx. ${maxMB} MB). Usa un PDF más liviano.`);
@@ -354,109 +424,161 @@ function onFileSelected(input) {
     return;
   }
 
+  // FileReader lee el archivo y lo convierte a base64
   const reader = new FileReader();
   reader.onload = e => {
     archivoSeleccionado = {
-      nombre:  file.name,
-      tipo:    file.type,       /* application/pdf | image/jpeg | image/png */
-      base64:  e.target.result  /* data:application/pdf;base64,XXXX... */
+      nombre: file.name,
+      tipo:   file.type,        // ej: "application/pdf" o "image/jpeg"
+      base64: e.target.result   // texto base64: "data:application/pdf;base64,XXXX..."
     };
+    // Actualizar la interfaz con el nombre y peso del archivo
     document.getElementById('fileName').textContent = '📎 ' + file.name;
-    document.getElementById('fileSize').textContent =
-      '(' + (file.size / 1024).toFixed(1) + ' KB)';
-    document.getElementById('uploadIcon').textContent =
-      file.type === 'application/pdf' ? '📕' : '🖼️';
+    document.getElementById('fileSize').textContent = '(' + (file.size / 1024).toFixed(1) + ' KB)';
+    // Cambiar el ícono según el tipo de archivo
+    document.getElementById('uploadIcon').textContent = file.type === 'application/pdf' ? '📕' : '🖼️';
   };
-  reader.readAsDataURL(file);
+  reader.readAsDataURL(file); // dispara el evento onload cuando termina
 }
 
-/* ── Registrar certificado ── */
-function registrarCertificado() {
-  const g = id => document.getElementById(id).value.trim();
-  const equipo = g('f_equipo'), serial = g('f_serial'), tipo = g('f_tipo'),
-        tecnico = g('f_tecnico'), institucion = g('f_institucion'),
-        fecha = g('f_fecha'), resultado = g('f_resultado');
 
+// ─────────────────────────────────────────────
+// REGISTRAR CERTIFICADO
+// Toma los datos del formulario, crea un bloque
+// nuevo y lo agrega a la cadena.
+// ─────────────────────────────────────────────
+function registrarCertificado() {
+  // Función auxiliar para leer y limpiar cada campo del formulario
+  const g = id => document.getElementById(id).value.trim();
+
+  const equipo      = g('f_equipo');
+  const serial      = g('f_serial');
+  const tipo        = g('f_tipo');
+  const tecnico     = g('f_tecnico');
+  const institucion = g('f_institucion');
+  const fecha       = g('f_fecha');
+  const resultado   = g('f_resultado');
+
+  // Validar que todos los campos estén llenos antes de continuar
   if (!equipo||!serial||!tipo||!tecnico||!institucion||!fecha||!resultado) {
-    alert('Por favor completa todos los campos.'); return;
+    alert('Por favor completa todos los campos.');
+    return;
   }
 
+  // Agregar el nuevo bloque con todos los datos del certificado
   semChain.addBlock({
-    equipo, serial, tipoServicio: tipo, tecnico, institucion, fecha, resultado,
-    archivo:      archivoSeleccionado ? archivoSeleccionado.nombre : 'Sin archivo adjunto',
-    archivoBase64:archivoSeleccionado ? archivoSeleccionado.base64 : null,
-    archivoTipo:  archivoSeleccionado ? archivoSeleccionado.tipo   : null,
+    equipo, serial,
+    tipoServicio:  tipo,
+    tecnico, institucion, fecha, resultado,
+    archivo:       archivoSeleccionado ? archivoSeleccionado.nombre : 'Sin archivo adjunto',
+    archivoBase64: archivoSeleccionado ? archivoSeleccionado.base64 : null, // archivo en base64
+    archivoTipo:   archivoSeleccionado ? archivoSeleccionado.tipo   : null, // tipo MIME del archivo
   });
+
+  // Guardar la cadena actualizada en localStorage
   guardar();
 
+  // Limpiar todos los campos del formulario después de registrar
   ['f_equipo','f_serial','f_tipo','f_tecnico','f_institucion','f_fecha','f_resultado'].forEach(id => {
     document.getElementById(id).value = '';
   });
-  document.getElementById('fileName').textContent = '';
-  document.getElementById('fileSize').textContent = '';
+  document.getElementById('fileName').textContent  = '';
+  document.getElementById('fileSize').textContent  = '';
   document.getElementById('uploadIcon').textContent = '📄';
   archivoSeleccionado = null;
   document.getElementById('f_archivo').value = '';
 
+  // Mostrar mensaje de éxito por 5 segundos
   const msg = document.getElementById('successMsg');
   msg.style.display = 'block';
   setTimeout(() => { msg.style.display = 'none'; }, 5000);
+
+  // Actualizar los contadores del encabezado
   updateStats();
 }
 
-/* ── Abrir archivo en nueva pestaña ── */
+
+// ─────────────────────────────────────────────
+// VER ARCHIVO — abrir el PDF o imagen en nueva pestaña
+// Convierte el base64 de vuelta a un archivo real
+// usando Blob y una URL temporal del navegador.
+// ─────────────────────────────────────────────
 function verArchivo(base64, tipo, nombre) {
   if (!base64) return;
-  /* Convertir data URL a Blob para abrir limpio en nueva pestaña */
-  const byteStr   = atob(base64.split(',')[1]);
-  const arr       = new Uint8Array(byteStr.length);
+
+  // Decodificar el base64 a bytes
+  const byteStr = atob(base64.split(',')[1]);
+  const arr     = new Uint8Array(byteStr.length);
   for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
-  const blob      = new Blob([arr], { type: tipo });
-  const url       = URL.createObjectURL(blob);
-  const ventana   = window.open(url, '_blank');
+
+  // Crear un Blob (objeto binario) con el tipo correcto (pdf, imagen, etc.)
+  const blob = new Blob([arr], { type: tipo });
+
+  // Crear una URL temporal que el navegador puede abrir
+  const url     = URL.createObjectURL(blob);
+  const ventana = window.open(url, '_blank');
+
   if (!ventana) alert('Permite ventanas emergentes para ver el archivo.');
+
+  // Liberar la URL temporal después de 10 segundos (ya no se necesita)
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-/* ── Render tarjetas de certificados ── */
+
+// ─────────────────────────────────────────────
+// RENDERIZAR TARJETAS DE CERTIFICADOS
+// Genera el HTML de cada certificado registrado
+// y lo muestra en la pestaña "Consultar".
+// ─────────────────────────────────────────────
 function renderCerts() {
   const grid     = document.getElementById('certGrid');
   const buscar   = document.getElementById('buscarTexto').value.toLowerCase();
   const tipoFilt = document.getElementById('filtroTipo').value.toLowerCase();
 
-  const certs    = semChain.chain.filter(b => b.data && typeof b.data === 'object' && b.data.equipo);
+  // Filtrar solo los bloques que tienen datos de certificado (excluir el génesis)
+  const certs = semChain.chain.filter(b => b.data && typeof b.data === 'object' && b.data.equipo);
+
+  // Aplicar filtros de búsqueda por texto y por tipo de servicio
   const filtrados = certs.filter(b => {
     const d  = b.data;
-    const ok = !buscar || [d.equipo,d.serial,d.tecnico,d.institucion,d.resultado].join(' ').toLowerCase().includes(buscar);
+    const ok = !buscar || [d.equipo, d.serial, d.tecnico, d.institucion, d.resultado]
+                           .join(' ').toLowerCase().includes(buscar);
     const tp = !tipoFilt || d.tipoServicio.toLowerCase().includes(tipoFilt);
     return ok && tp;
   });
 
+  // Si no hay resultados, mostrar mensaje vacío
   if (filtrados.length === 0) {
     grid.innerHTML = `<div class="empty-state">
       <div class="big">📋</div>
       <p>${certs.length === 0
         ? 'Aún no hay certificados registrados.<br>Ve a <strong>Registrar</strong> para agregar el primero.'
         : 'No se encontraron certificados con ese filtro.'}</p>
-    </div>`; return;
+    </div>`;
+    return;
   }
 
+  // Generar el HTML de cada tarjeta de certificado
   grid.innerHTML = filtrados.map(b => {
     const d        = b.data;
-    const num      = `SEM-CERT-${String(b.index).padStart(4,'0')}`;
-    const fechaLeg = new Date(b.date).toLocaleDateString('es-CO', {day:'2-digit',month:'short',year:'numeric'});
+    const num      = `SEM-CERT-${String(b.index).padStart(4, '0')}`; // ej: SEM-CERT-0001
+    const fechaLeg = new Date(b.date).toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' });
+
+    // Detectar si el bloque tiene archivo adjunto y de qué tipo es
     const tieneArchivo = !!d.archivoBase64;
     const esPDF        = d.archivoTipo === 'application/pdf';
     const esImagen     = d.archivoTipo && d.archivoTipo.startsWith('image/');
 
-    /* Vista previa: imagen inline o botón para PDF */
+    // Construir la vista previa del archivo según su tipo
     let previstaHTML = '';
     if (tieneArchivo && esImagen) {
+      // Imágenes se muestran directamente en la tarjeta
       previstaHTML = `
         <div style="margin-top:12px;border:1px solid var(--borde);border-radius:12px;overflow:hidden;">
           <img src="${d.archivoBase64}" alt="Certificado" style="width:100%;display:block;max-height:320px;object-fit:contain;background:#f9f9f9;">
         </div>`;
     } else if (tieneArchivo && esPDF) {
+      // PDFs muestran un recuadro con ícono y nombre del archivo
       previstaHTML = `
         <div style="margin-top:12px;background:rgba(11,74,162,.04);border:1px solid rgba(11,74,162,.15);
           border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;">
@@ -482,6 +604,7 @@ function renderCerts() {
       </div>
 
       <div class="cert-card-body">
+        <!-- Campos principales del certificado -->
         <div class="cert-fields">
           <div class="cert-field"><label>Tipo de servicio</label><span>${d.tipoServicio}</span></div>
           <div class="cert-field"><label>Técnico</label><span>${d.tecnico}</span></div>
@@ -491,13 +614,16 @@ function renderCerts() {
           <div class="cert-field"><label>Archivo</label><span>${d.archivo}</span></div>
         </div>
 
+        <!-- Vista previa del archivo (imagen o recuadro PDF) -->
         ${previstaHTML}
 
+        <!-- Hash SHA-256 del bloque — huella inmutable del certificado -->
         <div class="cert-hash" style="margin-top:12px;">
           <strong>Hash SHA-256 (blockchain)</strong>${b.hash}
         </div>
       </div>
 
+      <!-- Sección expandible con datos técnicos del bloque -->
       <div class="cert-detail" id="detail-${b.index}">
         <div class="detail-grid">
           <div class="detail-row"><label>Bloque #</label><span>${b.index}</span></div>
@@ -516,11 +642,13 @@ function renderCerts() {
       <div class="cert-card-footer">
         <span class="cert-fecha">Registrado: ${fechaLeg}</span>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <!-- Botón para abrir el archivo adjunto (solo si existe) -->
           ${tieneArchivo ? `
           <button class="btn btn-blue" style="padding:7px 14px;font-size:13px;"
             onclick='verArchivo(${JSON.stringify(d.archivoBase64)}, ${JSON.stringify(d.archivoTipo)}, ${JSON.stringify(d.archivo)})'>
             ${esPDF ? '📕 Ver PDF' : '🖼️ Ver imagen'}
           </button>` : ''}
+          <!-- Botón para expandir/colapsar los detalles técnicos del bloque -->
           <button class="btn" style="padding:7px 14px;font-size:13px;background:#fff;border:1px solid var(--borde);"
             onclick="toggleDetalle(${b.index}, this)">Ver detalles blockchain ▾</button>
         </div>
@@ -529,17 +657,25 @@ function renderCerts() {
   }).join('');
 }
 
+// Expande o colapsa la sección de detalles técnicos de un certificado
 function toggleDetalle(idx, btn) {
   const d = document.getElementById('detail-' + idx);
   d.classList.toggle('open');
   btn.textContent = d.classList.contains('open') ? 'Ocultar detalles ▴' : 'Ver detalles blockchain ▾';
 }
+
+// Se llama cada vez que el usuario escribe en el buscador o cambia el filtro
 function filtrarCerts() { renderCerts(); }
 
-/* ── Cadena visual ── */
+
+// ─────────────────────────────────────────────
+// VERIFICAR INTEGRIDAD DE LA CADENA
+// Recalcula los hashes y compara con los guardados.
+// Muestra un mensaje verde (OK) o rojo (alterada).
+// ─────────────────────────────────────────────
 function verificarCadena() {
   const valido = semChain.isValid();
-  const div = document.getElementById('verifyResult');
+  const div    = document.getElementById('verifyResult');
   div.style.display = 'block';
   div.className = 'verify-result ' + (valido ? 'verify-ok' : 'verify-fail');
   div.innerHTML = valido
@@ -547,18 +683,36 @@ function verificarCadena() {
     : `<strong>⚠️ Cadena comprometida</strong><p>Se detectó una inconsistencia. Uno o más bloques podrían haber sido modificados.</p>`;
 }
 
+
+// ─────────────────────────────────────────────
+// RENDERIZAR CADENA VISUAL
+// Muestra todos los bloques uno debajo del otro
+// con sus hashes, para visualizar la estructura
+// técnica de la blockchain.
+// ─────────────────────────────────────────────
 function renderChain() {
   const container = document.getElementById('chainContainer');
   container.innerHTML = '';
+
   semChain.chain.forEach((b, i) => {
-    const esG = b.index === 0;
+    const esG = b.index === 0; // true si es el bloque génesis
+
+    // Preparar el HTML del contenido del bloque según su tipo
     let dataHTML = '';
     if (typeof b.data === 'object' && b.data.equipo) {
       const d = b.data;
-      dataHTML = `<span class="val val-data"><b>${d.equipo}</b> · Serie: ${d.serial}<br>Servicio: ${d.tipoServicio} · Técnico: ${d.tecnico}<br>Institución: ${d.institucion} · Fecha: ${d.fecha}<br>Resultado: ${d.resultado}</span>`;
+      dataHTML = `<span class="val val-data">
+        <b>${d.equipo}</b> · Serie: ${d.serial}<br>
+        Servicio: ${d.tipoServicio} · Técnico: ${d.tecnico}<br>
+        Institución: ${d.institucion} · Fecha: ${d.fecha}<br>
+        Resultado: ${d.resultado}
+      </span>`;
     } else {
+      // Para el bloque génesis, mostrar los datos en JSON
       dataHTML = `<span class="val val-data">${JSON.stringify(b.data)}</span>`;
     }
+
+    // Crear el elemento del bloque
     const div = document.createElement('div');
     div.className = 'bloque' + (esG ? ' bloque-genesis' : '');
     div.innerHTML = `
@@ -566,11 +720,16 @@ function renderChain() {
         <div class="bloque-num"><span class="dot"></span>${esG ? 'Bloque Génesis' : 'Bloque #' + b.index}</div>
         <span class="badge ${esG ? 'badge-gris' : 'badge-verde'}">${esG ? '⚙️ Génesis' : '🔒 Certificado'}</span>
       </div>
-      <div class="bloque-field"><label>Fecha</label><span class="val val-data">${new Date(b.date).toLocaleString('es-CO')}</span></div>
+      <div class="bloque-field"><label>Fecha</label>
+        <span class="val val-data">${new Date(b.date).toLocaleString('es-CO')}</span></div>
       <div class="bloque-field"><label>Datos</label>${dataHTML}</div>
-      <div class="bloque-field"><label>Hash anterior</label><span class="val">${b.previoHash || '— (ninguno)'}</span></div>
-      <div class="bloque-field"><label>Hash del bloque</label><span class="val" style="color:var(--azul);font-weight:700;">${b.hash}</span></div>`;
+      <div class="bloque-field"><label>Hash anterior</label>
+        <span class="val">${b.previoHash || '— (ninguno)'}</span></div>
+      <div class="bloque-field"><label>Hash del bloque</label>
+        <span class="val" style="color:var(--azul);font-weight:700;">${b.hash}</span></div>`;
     container.appendChild(div);
+
+    // Agregar flecha conectora entre bloques (excepto después del último)
     if (i < semChain.chain.length - 1) {
       const arr = document.createElement('div');
       arr.className = 'chain-arrow';
@@ -580,22 +739,34 @@ function renderChain() {
   });
 }
 
-/* ── Stats ── */
+
+// ─────────────────────────────────────────────
+// ACTUALIZAR ESTADÍSTICAS DEL ENCABEZADO
+// Muestra el total de bloques, certificados
+// y el estado de integridad de la cadena.
+// ─────────────────────────────────────────────
 function updateStats() {
   document.getElementById('statBloques').textContent = semChain.chain.length;
-  document.getElementById('statCerts').textContent   = semChain.chain.length - 1;
+  document.getElementById('statCerts').textContent   = semChain.chain.length - 1; // sin contar el génesis
+
   const ok = semChain.isValid();
   const el = document.getElementById('statIntegra');
   el.textContent = ok ? '✓ OK' : '⚠ Error';
   el.style.color = ok ? '#16a34a' : '#b91c1c';
 }
 
-/* ── Drag & drop ── */
+
+// ─────────────────────────────────────────────
+// DRAG & DROP — resaltar la zona de subida
+// cuando el usuario arrastra un archivo encima.
+// ─────────────────────────────────────────────
 const zone = document.getElementById('uploadZone');
 zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
 zone.addEventListener('dragleave', ()=> zone.classList.remove('drag-over'));
 zone.addEventListener('drop',      e => { e.preventDefault(); zone.classList.remove('drag-over'); });
 
+
+// Inicializar las estadísticas al cargar la página
 updateStats();
 </script>
 </body>
