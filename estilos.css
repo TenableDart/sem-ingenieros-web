@@ -1,11 +1,11 @@
 :root{
   --azul:#0B4AA2;
   --azul2:#003B8E;
-  --naranja:#C4C4C4;
+  --naranja:#f76c0c;
   --fondo:#f5f7fb;
   --texto:#111827;
   --muted:#6b7280;
-  --gris:#a3a2a2;
+  --gris:#e9eef6;
   --card:#ffffff;
   --borde:#e5e7eb;
   --sombra: 0 10px 25px rgba(0,0,0,.08);
@@ -53,7 +53,7 @@ img{ max-width:100%; }
 .brand-badge{
   width:34px; height:34px;
   border-radius:10px;
-  background:linear-gradient(135deg, #C4C4C4, #d9d9d9);
+  background:linear-gradient(135deg, var(--naranja), #ff9b4a);
   display:inline-block;
 }
 
@@ -405,6 +405,30 @@ main{
   display:grid;
   grid-template-columns: 1fr 1fr;
   gap:10px;
+}
+
+
+/* ── Tarjetas de logos de clientes ── */
+.logo-card {
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  padding: 18px 12px;
+  text-align: center;
+  transition: box-shadow .2s, transform .2s;
+}
+.logo-card:hover { transform: translateY(-2px); }
+.logo-badge {
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 10px;
+  font-size: 17px; color: #fff; font-weight: 900;
+  letter-spacing: -.5px;
+}
+.logo-name {
+  font-size: 12px; font-weight: 700;
+  color: var(--texto); line-height: 1.4;
 }
 
 /* Footer */
