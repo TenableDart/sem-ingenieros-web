@@ -88,15 +88,18 @@ img{ max-width:100%; }
 .submenu{
   display:none;
   position:absolute;
-  top:48px;
+  top:100%;
   left:0;
-  min-width:220px;
+  min-width:240px;
   background:#fff;
   border-radius:14px;
   box-shadow:0 18px 40px rgba(0,0,0,.14);
   padding:8px;
   z-index:2000;
   border:1px solid rgba(0,0,0,.04);
+  /* Puente invisible para que el mouse no pierda el hover al pasar del botón al menú */
+  margin-top:0;
+  padding-top:12px;
 }
 .submenu li{ list-style:none; }
 .submenu a{
@@ -106,7 +109,18 @@ img{ max-width:100%; }
 }
 .submenu a:hover{ background:var(--gris); }
 
+/* Área de hover extendida para no perder el foco al mover el mouse */
+.dropdown{ padding-bottom:4px; }
 .dropdown:hover .submenu{ display:block; }
+.dropdown .submenu::before{
+  content:'';
+  position:absolute;
+  top:-8px;
+  left:0;
+  right:0;
+  height:10px;
+  background:transparent;
+}
 
 .hamburger{
   display:none;
