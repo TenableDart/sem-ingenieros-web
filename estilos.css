@@ -53,8 +53,8 @@ img{ max-width:100%; }
 .brand-badge{
   width:34px; height:34px;
   border-radius:10px;
-  background:linear-gradient(135deg, var(--naranja), #ff9b4a);
   display:inline-block;
+  object-fit:contain;
 }
 
 .menu{
