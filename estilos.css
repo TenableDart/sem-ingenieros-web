@@ -224,14 +224,22 @@ img{ max-width:100%; }
   border:1px solid transparent;
   cursor:pointer;
 }
-.btn-primary{ background:#9ca3af; color:#fff; }
+.btn-primary{
+  background:#9ca3af;
+  color:#fff;
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+}
 .btn-primary:hover{ filter:brightness(.96); transform:translateY(-1px); }
 .btn-ghost{
-  background:rgba(255,255,255,.10);
+  background:var(--azul);
   color:#fff;
-  border-color:rgba(255,255,255,.28);
+  border-color:var(--azul);
 }
-.btn-ghost:hover{ background:rgba(255,255,255,.16); }
+.btn-ghost:hover{ background:var(--azul2); }
 .btn-blue{ background:var(--azul); color:#fff; }
 .btn-blue:hover{ filter:brightness(.96); transform:translateY(-1px); }
 
