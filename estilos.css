@@ -228,10 +228,10 @@ img{ max-width:100%; }
   background:#9ca3af;
   color:#fff;
   text-shadow:
-    -1px -1px 0 #000,
-     1px -1px 0 #000,
-    -1px  1px 0 #000,
-     1px  1px 0 #000;
+    -1px -1px 0 #9ca3af,
+     1px -1px 0 #9ca3af,
+    -1px  1px 0 #9ca3af,
+     1px  1px 0 #9ca3af;
 }
 .btn-primary:hover{ filter:brightness(.96); transform:translateY(-1px); }
 .btn-ghost{
