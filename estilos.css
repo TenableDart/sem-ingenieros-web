@@ -227,6 +227,7 @@ img{ max-width:100%; }
 .btn-primary{
   background:#9ca3af;
   color:#fff;
+  border-color:#4b5563;
   text-shadow:
     -1px -1px 0 #9ca3af,
      1px -1px 0 #9ca3af,
