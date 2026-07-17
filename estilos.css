@@ -590,3 +590,13 @@ footer{
   font-weight:700;
   color:var(--azul);
 }
+
+/* Página Clientes: apilar sidebar debajo en vez de al lado (mucho contenido en la columna principal) */
+.layout-stack{
+  grid-template-columns: 1fr;
+}
+.layout-stack .sidebar{
+  position: relative;
+  top: auto;
+  max-width: 420px;
+}
