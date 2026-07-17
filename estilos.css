@@ -229,10 +229,10 @@ img{ max-width:100%; }
   color:#fff;
   border-color:#4b5563;
   text-shadow:
-    -1px -1px 0 #9ca3af,
-     1px -1px 0 #9ca3af,
-    -1px  1px 0 #9ca3af,
-     1px  1px 0 #9ca3af;
+    -1px -1px 0 #4b5563,
+     1px -1px 0 #4b5563,
+    -1px  1px 0 #4b5563,
+     1px  1px 0 #4b5563;
 }
 .btn-primary:hover{ filter:brightness(.96); transform:translateY(-1px); }
 .btn-ghost{
